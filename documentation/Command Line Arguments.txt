@@ -1,0 +1,8 @@
+--nogui
+Runs program without showing the GUI
+
+--attach-console
+Attaches a console to view the standard output
+
+--echo-command-line-arguments
+Echos the passed command line arguments back to the user
