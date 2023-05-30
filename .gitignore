@@ -3,3 +3,6 @@
 *.vcxproj.filters
 assets/
 x64/
+lib/
+*.config
+*.ttf

@@ -1,5 +1,4 @@
-#ifndef COMMS_H
-#define COMMS_H
+#pragma once
 
 #include "serial.h"
 
@@ -10,5 +9,3 @@ namespace Comms {
 
 	void test(Serial::Port& port);
 }
-
-#endif

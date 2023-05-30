@@ -1,5 +1,4 @@
-#ifndef SERIAL_H
-#define SERIAL_H
+#pragma once
 
 #include <string>
 #include <vector>
@@ -22,5 +21,3 @@ namespace Serial {
 	bool Read(Port& port, uint8_t* buffer, int count);
 	bool Write(Port& port, uint8_t* buffer, int count);
 }
-
-#endif
