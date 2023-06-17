@@ -7,58 +7,47 @@
 #include <glad/glad.h>
 
 #include "files.h"
-#include "gui.h"
+//#include "gui.h"
+
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <backends/imgui_impl_win32.h>
+#include <backends/imgui_impl_opengl3.h>
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+
 
 namespace MainWindow {
 	static bool begin = false;
 
-	std::unique_ptr<GUI::GUI> gui;
-	//std::unique_ptr<GUI::TextButton> button1;
-	//std::unique_ptr<GUI::TextButton> button2;
-	unsigned int fontHandle;
+	void UserInterface(WindowManager::Window& window) {
+		// set constraints on window position and size
+		ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+		// minimum window height is smaller then height of menu therefore minimum menu height applies
+		ImGui::SetNextWindowSize(ImVec2(window.getActualWidth(), window.getActualHeight()));
 
-	void UserInterface() {
-		static GUI::TextButton button1("Button 1");
-		static GUI::TextButton button2("Button 2");
+		// flags for window creation
+		ImGuiWindowFlags windowflags =
+			ImGuiWindowFlags_NoTitleBar |
+			ImGuiWindowFlags_NoCollapse |
+			ImGuiWindowFlags_NoMove |
+			//ImGuiWindowFlags_MenuBar |
+			ImGuiWindowFlags_NoResize |
+			ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-		gui->beginRender();
+		ImGui::Begin("Main Window", nullptr, windowflags);
 
-		//static int num = 2;
-		//button2.setText(std::format("Button {}", num++));
+		ImGui::Text("Hello, world!");
 
-		if (gui->renderTextButton(button1)) {
-			std::cout << "button 1 pressed\n";
-		}
-		if (gui->renderTextButton(button2)) {
-			std::cout << "button 2 pressed\n";
-		}
-
-		gui->endRender();
+		ImGui::End();
 	}
 
 	void WindowMain(WindowManager::Window& window) {
 
+		window.initImGui(UserInterface);
 
-
-
-
-		gui = std::make_unique<GUI::GUI>(window);
-		gui->newFont(fontHandle, "C:/Windows/Fonts/Segoeui.ttf", 14);
-
-		//style = GUI::initDefaultStyle();
-		
-		//button1 = std::make_unique<GUI::TextButton>("Button 1");
-		//button2 = std::make_unique<GUI::TextButton>("Button 2");
-
-		/*gui->RenderTextButton(*button);*/
-
-		//gui->setCursorMode(GUI::CursorMode::AdvanceHorizontal);
-
-
-
-
-		begin = true;
-
+		InvalidateRect(window.hWnd, NULL, false);
 
 		MSG msg;
 		int bRet;
@@ -73,13 +62,8 @@ namespace MainWindow {
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}
-		}
 
-		
-		
-		//button1.reset();
-		//button2.reset();
-		gui.reset();
+		}
 	}
 
 	// WndProc
@@ -88,65 +72,8 @@ namespace MainWindow {
 
 		LRESULT wndProcHandlerReturn;
 		if (wndProcHandlerReturn = WindowManager::HandleWndProc(hWnd, msg, wParam, lParam, window)) return wndProcHandlerReturn;
-		if (wndProcHandlerReturn = gui->handleWndProc(hWnd, msg, wParam, lParam)) return wndProcHandlerReturn;
 
-		switch (msg) {
-
-		case WM_SIZE:
-			if (begin) {
-				//screen->setViewport(LOWORD(lParam), HIWORD(lParam));
-				//testCamera->setViewport(window->getActualWidth(), window->getActualHeight());
-				//testCamera->setScale(window->getNominalHeight());
-				//testCamera->setPosition(window->getNominalWidth() / 2, window->getNominalHeight() / 2);
-
-				//screen->clear();
-			}
-			return 0;
-			
-		case WM_PAINT:
-			if (begin) {
-				Graphics2D::Color clearColor(0.1f, 0.1f, 0.1f, 1.0f);
-				//screen->setClearColor(clearColor);
-				////screen->clear();
-				//screen->clearRect(*buttonRect, clearColor);
-				//Graphics2D::drawElement(*testElement, *testShader, *testCamera);
-				//Graphics2D::drawTextElement(*textElement, *testFont, *textShader, *testCamera);
-				//screen->swap();
-
-				//if (count == 1000) gui->invalidateScreen();
-				/*gui->beginRender();*/
-				
-				//if (gui->renderTextButton(*button1)) {
-				//	std::cout << "button 1 pressed\n";
-				//}
-				//if (gui->renderTextButton(*button2)) {
-				//	std::cout << "button 2 pressed\n";
-				//}
-				//if (count < 1000) {
-				//	gui->renderTextButton(*button);
-				//	gui->renderTextButton(*button);
-				//}
-				//gui->endRender();
-				std::cout << "paint\n";
-
-				UserInterface();
-
-				if (gui->wantSwapBuffers()) {
-					wglMakeCurrent(window->hdc, window->GLctx);
-					SwapBuffers(window->hdc);
-				}
-				ValidateRect(window->hWnd, NULL);
-			}
-			//ValidateRect(window->hWnd, NULL);
-			return 0;
-			//break;
-
-		//case WM_KEYDOWN:
-		//	return 0;
-
-		default:
-			return DefWindowProcW(hWnd, msg, wParam, lParam);
-		}
+		return DefWindowProcW(hWnd, msg, wParam, lParam);
 	}
 
 	WindowManager::Window* Create(int width, int height) {

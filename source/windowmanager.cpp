@@ -12,12 +12,15 @@
 
 #include <2dGraphicsLibrary.h>
 
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <backends/imgui_impl_win32.h>
+#include <backends/imgui_impl_opengl3.h>
+
 // global program variables
 HINSTANCE _hInstance;
 LPWSTR _lpCmdLine;
 int _nCmdShow;
-
-
 
 // declare main function
 extern int main(std::vector<std::wstring_view> commandLineArguments);
@@ -48,6 +51,28 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
 	// call main
 	return main(commandLineArguments);
+}
+
+namespace ImGui {
+	bool WantRender() {
+		//return true;
+
+		ImGuiContext& g = *ImGui::GetCurrentContext();
+		ImGuiIO& io = ImGui::GetIO();
+
+		static int indices = 0;
+		static unsigned int hoveredId = 0, activeId = 0;
+
+		if (g.HoveredId != hoveredId || g.ActiveId != activeId || io.MetricsRenderIndices != indices) {
+			hoveredId = g.HoveredId;
+			activeId = g.ActiveId;
+			indices = io.MetricsRenderIndices;
+
+			return true;
+		}
+
+		return false;
+	}
 }
 
 namespace WindowManager {
@@ -193,6 +218,8 @@ namespace WindowManager {
 	}
 
 
+
+
 	LRESULT HandleWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, Window*& window) {
 		window = (Window*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
 		if (!window) {
@@ -233,7 +260,39 @@ namespace WindowManager {
 					windowRect.bottom - windowRect.top + 1, NULL);
 			return 0;
 
+		case WM_MOUSEMOVE:
+		case WM_LBUTTONDOWN:
+		case WM_MBUTTONDOWN:
+		case WM_RBUTTONDOWN:
+		case WM_LBUTTONUP:
+		case WM_MBUTTONUP:
+		case WM_RBUTTONUP:
+			InvalidateRect(window->hWnd, NULL, false);
+			break;
 
+		case WM_PAINT:
+			if (window->initializedImGui) {
+
+				ImGui_ImplOpenGL3_NewFrame();
+				ImGui_ImplWin32_NewFrame();
+				ImGui::NewFrame();
+
+				window->uiFunction(*window);
+
+				ImGui::Render();
+
+				if (ImGui::WantRender()) {
+					wglMakeCurrent(window->hdc, window->GLctx);
+
+					window->screen->clear();
+					ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+					window->screen->swap();
+
+					SwapBuffers(window->hdc);
+				}
+				ValidateRect(window->hWnd, NULL);
+			}
+			return 0;
 
 		}
 
@@ -379,6 +438,13 @@ namespace WindowManager {
 		//glEnable(GL_SCISSOR_TEST);
 
 		Graphics2D::init();
+
+		bool screenStatus = false;
+		window->screen = new Graphics2D::Screen(window->getActualWidth(), window->getActualHeight(), screenStatus);
+		if (!screenStatus) {
+			MessageBoxW(NULL, L"Failed to create window screen.", title, NULL);
+			return;
+		}
 
 		// show created window
 		ShowWindow(window->hWnd, _nCmdShow);

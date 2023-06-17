@@ -3,6 +3,12 @@
 #include <Windows.h>
 #include <thread>
 
+#include <2dGraphicsLibrary.h>
+
+#include <imgui.h>
+
+//#include "gui.h"
+
 namespace WindowManager {
 
 	class Window {
@@ -15,6 +21,8 @@ namespace WindowManager {
 		unsigned int dpi = 96;
 
 		int positionX = 0.0f, positionY = 0.0f;
+
+		void ImGuiStyleForDpi(int dpi);
 
 		// calculate sizes after one has been updated
 		void calculateNominalSize();
@@ -30,12 +38,20 @@ namespace WindowManager {
 		// opengl context
 		HGLRC GLctx;
 
+		// opengl screen for window
+		Graphics2D::Screen* screen;
+
+
 		// pointer assignable by user
 		void* userPointer;
 
 		// constructor
 		Window();
 		//Window(HWND hWnd, HDC hdc, HGLRC GLctx, int width, int height);
+
+		void initImGui(void (*uiFunction)(WindowManager::Window&));
+		void (*uiFunction)(WindowManager::Window&);
+		bool initializedImGui = false;
 
 		// Set sizes and DPIs
 		void setNominalSize(float width, float height);

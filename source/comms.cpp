@@ -1,8 +1,8 @@
 #include "comms.h"
 #include "gnclink.h"
 
-#include <deque>
-#include <mutex>
+//#include <deque>
+//#include <mutex>
 #include <iostream>
 #include <format>
 
@@ -112,24 +112,42 @@ namespace Comms {
 
 		CommsLoop(port);
 
+        GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
+        GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);
+        if (packetType != GNClink_PacketType_GetGlobalHash || (packetFlags & GNClink_PacketFlags_Response) == 0) return 0;
+
 		return *(uint32_t*)GNClink_Get_Packet_Payload_Pointer(rxpacket);
 	}
 
-    void test(Serial::Port& port) {
-        uint8_t* rxpayload = GNClink_Get_Packet_Payload_Pointer(rxpacket);
-        uint8_t* txpayload = GNClink_Get_Packet_Payload_Pointer(txpacket);
-        uint16_t* idList = (uint16_t*)(txpayload + 1);
-
-        *txpayload = 3;
-        idList[0] = 2;
-        idList[1] = 1;
-        idList[2] = 5;
-
-        GNClink_Construct_Packet(txpacket, GNClink_PacketType_GetValueList, GNClink_PacketFlags_None, 7);
+    uint16_t GetValueCount(Serial::Port& port) {
+        GNClink_Construct_Packet(txpacket, GNClink_PacketType_GetValueCount, GNClink_PacketFlags_None, 0);
 
         CommsLoop(port);
 
-        std::cout << std::format("{}\n", *(uint32_t*)rxpayload);
-        std::cout << std::format("{}\n", *(float*)(rxpayload + 8));
+        GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
+        GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);
+        if (packetType != GNClink_PacketType_GetValueCount || (packetFlags & GNClink_PacketFlags_Response) == 0) return 0;
+
+        return *(uint16_t*)GNClink_Get_Packet_Payload_Pointer(rxpacket);
     }
+
+    std::string GetValueName(uint16_t id, uint8_t& type, Serial::Port& port) {
+        uint8_t* rxpayload = GNClink_Get_Packet_Payload_Pointer(rxpacket);
+        uint16_t* txpayload = (uint16_t*)GNClink_Get_Packet_Payload_Pointer(txpacket);
+
+        *txpayload = id;
+
+        GNClink_Construct_Packet(txpacket, GNClink_PacketType_GetValueName, GNClink_PacketFlags_None, 2);
+
+        CommsLoop(port);
+
+        GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
+        GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);
+        if (packetType != GNClink_PacketType_GetValueName || (packetFlags & GNClink_PacketFlags_Response) == 0) return {};
+
+        type = *rxpayload;
+
+        return std::string((char*)(rxpayload + 1));
+    }
+
 }

@@ -218,7 +218,7 @@ namespace Serial {
 			return false;
 		}
 
-		std::cout << std::format("Read {}/{} bytes.\n", bytesRead, count);
+		//std::cout << std::format("Read {}/{} bytes.\n", bytesRead, count);
 		return true;
 	}
 
@@ -229,7 +229,7 @@ namespace Serial {
 			return false;
 		}
 
-		std::cout << std::format("Written {}/{} bytes.\n", bytesWritten, count);
+		//std::cout << std::format("Written {}/{} bytes.\n", bytesWritten, count);
 		return true;
 	}
 }

@@ -6,3 +6,5 @@ x64/
 lib/
 *.config
 *.ttf
+oldsource/
+output/
