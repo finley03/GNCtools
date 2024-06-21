@@ -22,6 +22,8 @@ namespace WindowManager {
 
 		int positionX = 0.0f, positionY = 0.0f;
 
+		bool renderNeeded = false;
+
 		void ImGuiStyleForDpi(int dpi);
 
 		// calculate sizes after one has been updated
@@ -65,6 +67,9 @@ namespace WindowManager {
 		float getScale();
 		void setPosition(int x, int y);
 		void getPosition(int& x, int& y);
+
+		// want render operation
+		bool wantRender(bool reset = false);
 	};
 
 	// Creates console for stdio
@@ -80,4 +85,7 @@ namespace WindowManager {
 
 	// default handler for the WndProc function
 	LRESULT HandleWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, Window*& window);
+
+	//// Initialize window class
+	//bool Init(const wchar_t* title, WNDPROC wndproc);
 }

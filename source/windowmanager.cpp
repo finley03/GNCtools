@@ -25,6 +25,8 @@ int _nCmdShow;
 // declare main function
 extern int main(std::vector<std::wstring_view> commandLineArguments);
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 // program entry point
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow) {
 	//// check windows version is 10 or above
@@ -83,8 +85,8 @@ namespace WindowManager {
 	}
 
 	void Window::calculateActualSize() {
-		actualWidth = nominalWidth * dpi / 96;
-		actualHeight = nominalHeight * dpi / 96;
+		actualWidth = nominalWidth * getScale();
+		actualHeight = nominalHeight * getScale();
 	}
 
 	Window::Window() {
@@ -100,6 +102,8 @@ namespace WindowManager {
 		nominalHeight = height;
 
 		calculateActualSize();
+
+		renderNeeded = true;
 	}
 
 	void Window::setActualSize(int width, int height) {
@@ -107,6 +111,10 @@ namespace WindowManager {
 		actualHeight = height;
 
 		calculateNominalSize();
+
+		screen->setViewport(width, height);
+
+		renderNeeded = true;
 	}
 
 	float Window::getNominalWidth() {
@@ -129,6 +137,8 @@ namespace WindowManager {
 		this->dpi = dpi;
 
 		calculateNominalSize();
+
+		renderNeeded = true;
 	}
 
 	int Window::getDpi() {
@@ -142,11 +152,19 @@ namespace WindowManager {
 	void Window::setPosition(int x, int y) {
 		positionX = x;
 		positionY = y;
+
+		renderNeeded = true;
 	}
 
 	void Window::getPosition(int& x, int& y) {
 		x = positionX;
 		y = positionY;
+	}
+
+
+	bool Window::wantRender(bool reset) {
+		return renderNeeded;
+		if (reset) renderNeeded = false;
 	}
 
 
@@ -231,6 +249,9 @@ namespace WindowManager {
 			return DefWindowProcW(hWnd, msg, wParam, lParam);
 		}
 
+		LRESULT ImGuiWndProcReturn;
+		if (ImGuiWndProcReturn = ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) return ImGuiWndProcReturn;
+
 		switch (msg) {
 		case WM_CLOSE:
 			DestroyWindow(hWnd);
@@ -245,13 +266,15 @@ namespace WindowManager {
 			window->setActualSize(LOWORD(lParam), HIWORD(lParam));
 			return 0;
 
+		case WM_SIZING:
+			return TRUE;
+
 		case WM_MOVE:
 			window->setPosition(LOWORD(lParam), HIWORD(lParam));
 			return 0;
 
 		case WM_DPICHANGED:
 			window->setDpi(LOWORD(wParam));
-			std::wcout << std::format(L"DPI: {}\n", LOWORD(wParam));
 
 			// Resize window to work around a DWM bug??
 			RECT windowRect;
@@ -281,7 +304,7 @@ namespace WindowManager {
 
 				ImGui::Render();
 
-				if (ImGui::WantRender()) {
+				if (ImGui::WantRender() || window->wantRender()) {
 					wglMakeCurrent(window->hdc, window->GLctx);
 
 					window->screen->clear();
@@ -298,6 +321,46 @@ namespace WindowManager {
 
 		return 0;
 	}
+
+	//bool Init(const wchar_t* title, WNDPROC wndproc) {
+	//	bool status;
+
+	//	// create window class information
+	//	WNDCLASSEXW wcex;
+	//	// set size
+	//	wcex.cbSize = sizeof(WNDCLASSEXW);
+	//	// window style:
+	//	// redraw if size adjust
+	//	wcex.style = CS_HREDRAW | CS_VREDRAW;
+	//	// pointer to WindowProc
+	//	wcex.lpfnWndProc = wndproc;
+	//	// 0 extra bytes allocated
+	//	wcex.cbClsExtra = 0;
+	//	wcex.cbWndExtra = 0;
+	//	// handle to window instance
+	//	wcex.hInstance = _hInstance;
+	//	// use default icon
+	//	wcex.hIcon = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+	//	// load cursor
+	//	wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+	//	// background
+	//	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	//	// no default manu
+	//	wcex.lpszMenuName = NULL;
+	//	// name
+	//	wcex.lpszClassName = title; // L"GNCtools";
+	//	// icon
+	//	wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+
+	//	// register wcex class with windows
+	//	if (!RegisterClassExW(&wcex)) {
+	//		MessageBoxW(NULL, L"\"RegisterClassEx\" call failed.", title, NULL);
+	//		status = false;
+	//		return false;
+	//	}
+
+	//	return true;
+	//}
 
 
 
@@ -367,7 +430,7 @@ namespace WindowManager {
 		// no default manu
 		wcex.lpszMenuName = NULL;
 		// name
-		wcex.lpszClassName = L"GNCtools";
+		wcex.lpszClassName = title; // L"GNCtools";
 		// icon
 		wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
 
@@ -412,16 +475,9 @@ namespace WindowManager {
 		DwmSetWindowAttribute(window->hWnd, DWMWINDOWATTRIBUTE::DWMWA_TEXT_COLOR, &textColor, sizeof(COLORREF));
 		DwmSetWindowAttribute(window->hWnd, DWMWINDOWATTRIBUTE::DWMWA_BORDER_COLOR, &borderColor, sizeof(COLORREF));
 
-		/*BOOL trueBool = true;
-		DwmSetWindowAttribute(window->hWnd, DWMWINDOWATTRIBUTE::DWMWA_USE_IMMERSIVE_DARK_MODE, &trueBool, sizeof(BOOL));*/
 
 
 
-		RECT rect;
-		GetClientRect(window->hWnd, &rect);
-		window->setActualSize(rect.right - rect.left, rect.bottom - rect.top);
-		//window->width = rect.right - rect.left;
-		//window->height = rect.bottom - rect.top;
 
 		CreateGLContext(*window);
 
@@ -445,6 +501,12 @@ namespace WindowManager {
 			MessageBoxW(NULL, L"Failed to create window screen.", title, NULL);
 			return;
 		}
+
+		RECT rect;
+		GetClientRect(window->hWnd, &rect);
+		window->setActualSize(rect.right - rect.left, rect.bottom - rect.top);
+
+		window->setDpi(GetDpiForWindow(window->hWnd));
 
 		// show created window
 		ShowWindow(window->hWnd, _nCmdShow);

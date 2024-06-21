@@ -21,7 +21,7 @@ namespace WindowManager {
 		ImGui_ImplWin32_Init(hWnd);
 		ImGui_ImplOpenGL3_Init();
 
-		io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/Segoeui.ttf", 18);
+		io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/Segoeui.ttf", 18 * getScale());
 
 		this->uiFunction = uiFunction;
 

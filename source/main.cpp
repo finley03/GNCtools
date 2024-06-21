@@ -22,8 +22,12 @@
 int main(std::vector<std::wstring_view> commandLineArguments) {
 	EvaluateCommandLine(commandLineArguments);
 
+	//MainWindow::Init();
+
 	//Graphics2D::init();
 
+
+	WindowManager::Window* window = MainWindow::Create(1000, 700, L"GNCtools");
 
 	std::cout << "Scanning for compatible port...\n";
 
@@ -59,8 +63,13 @@ int main(std::vector<std::wstring_view> commandLineArguments) {
 	//std::this_thread::sleep_for(std::chrono::seconds(5));
 
 	Globals::Globals globals(port);
+	
+	std::wcout << std::format(L"Discovered {} variables.\n", globals.variables.size());
 
-	WindowManager::Window* window = MainWindow::Create(600, 400);
+	//WindowManager::Window* window = MainWindow::Create(600, 400);
+	//window->thread.join();
+
+
 	window->thread.join();
 
 	return 0;

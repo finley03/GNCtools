@@ -4,7 +4,9 @@
 #include "windowmanager.h"
 
 namespace MainWindow {
-	WindowManager::Window* Create(int width, int height);
+	WindowManager::Window* Create(int width, int height, const wchar_t* title);
+
+	//void Init();
 }
 
 //class MainWindow {

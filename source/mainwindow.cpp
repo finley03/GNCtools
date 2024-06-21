@@ -38,9 +38,16 @@ namespace MainWindow {
 
 		ImGui::Begin("Main Window", nullptr, windowflags);
 
+		//ImGui::SetWindowFontScale((float)(window.getDpi()) / 96);
+
 		ImGui::Text("Hello, world!");
+		ImGui::Button("test");
+
+		//ImGui::ShowDemoWindow();
 
 		ImGui::End();
+
+		ImGui::ShowDemoWindow();
 	}
 
 	void WindowMain(WindowManager::Window& window) {
@@ -76,7 +83,13 @@ namespace MainWindow {
 		return DefWindowProcW(hWnd, msg, wParam, lParam);
 	}
 
-	WindowManager::Window* Create(int width, int height) {
-		return CreateWindowThread(L"GNCtools", width, height, WindowMain, MainWindowProc);
+	WindowManager::Window* Create(int width, int height, const wchar_t* title) {
+		return CreateWindowThread(title, width, height, WindowMain, MainWindowProc);
 	}
+
+
+
+	//void Init() {
+	//	WindowManager::Init(L"GNC2", MainWindowProc);
+	//}
 }
