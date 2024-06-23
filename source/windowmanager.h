@@ -39,6 +39,8 @@ namespace WindowManager {
 		HDC hdc;
 		// opengl context
 		HGLRC GLctx;
+		// ImGui context
+		ImGuiContext* ImGuiCTX;
 
 		// opengl screen for window
 		Graphics2D::Screen* screen;
@@ -67,6 +69,9 @@ namespace WindowManager {
 		float getScale();
 		void setPosition(int x, int y);
 		void getPosition(int& x, int& y);
+
+		void setWantRender(); // override render necessity check
+		void checkRender(); // will run a ui pass to check whether rendering is necessary
 
 		// want render operation
 		bool wantRender(bool reset = false);

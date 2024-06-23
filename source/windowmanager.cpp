@@ -162,9 +162,20 @@ namespace WindowManager {
 	}
 
 
+	void Window::setWantRender() {
+		renderNeeded = true;
+	}
+
+
+	void Window::checkRender() {
+		InvalidateRect(hWnd, NULL, false);
+	}
+
+
 	bool Window::wantRender(bool reset) {
-		return renderNeeded;
+		bool ret = renderNeeded;
 		if (reset) renderNeeded = false;
+		return ret;
 	}
 
 
@@ -249,6 +260,7 @@ namespace WindowManager {
 			return DefWindowProcW(hWnd, msg, wParam, lParam);
 		}
 
+		ImGui::SetCurrentContext(window->ImGuiCTX);
 		LRESULT ImGuiWndProcReturn;
 		if (ImGuiWndProcReturn = ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) return ImGuiWndProcReturn;
 
@@ -283,7 +295,9 @@ namespace WindowManager {
 					windowRect.bottom - windowRect.top + 1, NULL);
 			return 0;
 
+		// Any window events that require a render pass should be listed here
 		case WM_MOUSEMOVE:
+		case WM_MOUSEWHEEL:
 		case WM_LBUTTONDOWN:
 		case WM_MBUTTONDOWN:
 		case WM_RBUTTONDOWN:
@@ -293,9 +307,9 @@ namespace WindowManager {
 			InvalidateRect(window->hWnd, NULL, false);
 			break;
 
+		// Renders window
 		case WM_PAINT:
 			if (window->initializedImGui) {
-
 				ImGui_ImplOpenGL3_NewFrame();
 				ImGui_ImplWin32_NewFrame();
 				ImGui::NewFrame();
@@ -304,7 +318,7 @@ namespace WindowManager {
 
 				ImGui::Render();
 
-				if (ImGui::WantRender() || window->wantRender()) {
+				if (ImGui::WantRender() || window->wantRender(true)) {
 					wglMakeCurrent(window->hdc, window->GLctx);
 
 					window->screen->clear();

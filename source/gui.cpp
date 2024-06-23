@@ -14,7 +14,8 @@ namespace WindowManager {
 
 	void Window::initImGui(void (*uiFunction)(WindowManager::Window&)) {
 		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
+		ImGuiCTX = ImGui::CreateContext();
+        ImGui::SetCurrentContext(ImGuiCTX);
 		ImGuiIO& io = ImGui::GetIO();
 		io.IniFilename = NULL; // disable imgui ini
 
@@ -27,10 +28,13 @@ namespace WindowManager {
 
         ImGuiStyleForDpi(dpi);
 
+        //ImGui::SetCurrentContext
+
 		initializedImGui = true;
 	}
 
 	void Window::ImGuiStyleForDpi(int dpi) {
+        ImGui::SetCurrentContext(ImGuiCTX);
         ImGuiStyle& style = ImGui::GetStyle();
 
         style.Alpha = 1.0f;

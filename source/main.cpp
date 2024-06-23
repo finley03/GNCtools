@@ -7,16 +7,77 @@
 #include <map>
 #include <exception>
 
-#include "windowmanager.h"
-#include "serial.h"
-#include "gnclink.h"
 #include "comms.h"
 #include "commandline.h"
 #include "mainwindow.h"
-
-#include <2dGraphicsLibrary.h>
+#include"aboutwindow.h"
 
 #include "globals.h"
+
+Globals::Globals* globals_ptr = nullptr;
+
+
+void printVariable(Globals::GlobalVariable variable) {
+	char value[16];
+	
+	std::cout << variable.name << " : ";
+
+	switch (variable.type) {
+	case Globals::GlobalVariableTypes::I64:
+		snprintf(value, sizeof(value), "%d", variable.value.i64);
+		break;
+
+	case Globals::GlobalVariableTypes::U64:
+		snprintf(value, sizeof(value), "%u", variable.value.u64);
+		break;
+
+	case Globals::GlobalVariableTypes::F64:
+		snprintf(value, sizeof(value), "%f", variable.value.f64);
+		break;
+
+	case Globals::GlobalVariableTypes::I32:
+		snprintf(value, sizeof(value), "%d", variable.value.i32);
+		break;
+
+	case Globals::GlobalVariableTypes::U32:
+		snprintf(value, sizeof(value), "%u", variable.value.u32);
+		break;
+
+	case Globals::GlobalVariableTypes::FP32:
+		snprintf(value, sizeof(value), "%d", variable.value.i32);
+		break;
+
+	case Globals::GlobalVariableTypes::F32:
+		snprintf(value, sizeof(value), "%f", variable.value.f32);
+		break;
+
+	case Globals::GlobalVariableTypes::I16:
+		snprintf(value, sizeof(value), "%d", variable.value.i16);
+		break;
+
+	case Globals::GlobalVariableTypes::U16:
+		snprintf(value, sizeof(value), "%u", variable.value.u16);
+		break;
+
+	case Globals::GlobalVariableTypes::I8:
+		snprintf(value, sizeof(value), "%d", variable.value.i8);
+		break;
+
+	case Globals::GlobalVariableTypes::U8:
+		snprintf(value, sizeof(value), "%u", variable.value.u8);
+		break;
+
+	case Globals::GlobalVariableTypes::BOOL:
+		snprintf(value, sizeof(value), variable.value.b ? "TRUE" : "FALSE");
+		break;
+
+	default:
+		snprintf(value, sizeof(value), "<ERROR TYPE>");
+	}
+
+	std::cout << value << "\n";
+
+}
 
 
 int main(std::vector<std::wstring_view> commandLineArguments) {
@@ -26,51 +87,64 @@ int main(std::vector<std::wstring_view> commandLineArguments) {
 
 	//Graphics2D::init();
 
+	std::srand(std::time(nullptr)); // random seed
 
-	WindowManager::Window* window = MainWindow::Create(1000, 700, L"GNCtools");
 
-	std::cout << "Scanning for compatible port...\n";
+	WindowManager::Window* mainWindow = MainWindow::Create(1000, 700, L"GNC2 Ground Station");
+	//WindowManager::Window* aboutWindow = AboutWindow::Create(400, 300, L"About GNC2 Ground Station");
 
-	std::vector<std::wstring> busReportedDeviceDescList{ L"GNC2" };
-	std::vector<Serial::Port> ports;
 	while (1) {
-		ports = Serial::GetPortsWithBusReportedDeviceDescInList(busReportedDeviceDescList);
-		if (ports.size()) break;
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		std::cout << "Scanning for compatible port...\n";
+
+		std::vector<std::wstring> busReportedDeviceDescList{ L"GNC2" };
+		std::vector<Serial::Port> ports;
+		while (1) {
+			ports = Serial::GetPortsWithBusReportedDeviceDescInList(busReportedDeviceDescList);
+			if (ports.size()) break;
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		}
+
+		if (ports.size() > 1) {
+			std::cout << "More than one compatible port found, cannot proceed with autoconnect.\n";
+			return 1;
+		}
+
+		Serial::Port port = ports[0];
+		Serial::OpenPort(port);
+		std::wcout << std::format(L"Connected to {}.\n", port.name);
+
+		//uint32_t crc = Comms::GetGlobalHash(port);
+		////crc = Comms::GetGlobalHash(port);
+		////crc = Comms::GetGlobalHash(port);
+		//uint16_t valueCount = Comms::GetValueCount(port);
+
+		//uint8_t type;
+		//std::cout << std::format("0x{:08x}\n", crc);
+		//std::cout << std::format("{} addressible values\n", valueCount);
+		//std::cout << Comms::GetValueName(1, type, port) << "\n";
+
+		//Comms::test(port);
+
+		//std::this_thread::sleep_for(std::chrono::seconds(5));
+
+		Globals::Globals globals(port);
+		globals_ptr = &globals;
+
+		std::wcout << std::format(L"Discovered {} variables.\n", globals.variables.size());
+
+		while (port.open) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+			globals.pollAll();
+
+			mainWindow->checkRender();
+		}
+
+		globals_ptr = nullptr;
 	}
 
-	if (ports.size() > 1) {
-		std::cout << "More than one compatible port found, cannot proceed with autoconnect.\n";
-		return 1;
-	}
-
-	Serial::Port port = ports[0];
-	Serial::OpenPort(port);
-	std::wcout << std::format(L"Connected to {}.\n", port.name);
-
-	//uint32_t crc = Comms::GetGlobalHash(port);
-	////crc = Comms::GetGlobalHash(port);
-	////crc = Comms::GetGlobalHash(port);
-	//uint16_t valueCount = Comms::GetValueCount(port);
-
-	//uint8_t type;
-	//std::cout << std::format("0x{:08x}\n", crc);
-	//std::cout << std::format("{} addressible values\n", valueCount);
-	//std::cout << Comms::GetValueName(1, type, port) << "\n";
-
-	//Comms::test(port);
-
-	//std::this_thread::sleep_for(std::chrono::seconds(5));
-
-	Globals::Globals globals(port);
-	
-	std::wcout << std::format(L"Discovered {} variables.\n", globals.variables.size());
-
-	//WindowManager::Window* window = MainWindow::Create(600, 400);
-	//window->thread.join();
-
-
-	window->thread.join();
+	mainWindow->thread.join();
+	//aboutWindow->thread.join();
 
 	return 0;
 }

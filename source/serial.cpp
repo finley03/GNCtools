@@ -215,6 +215,7 @@ namespace Serial {
 		DWORD bytesRead;
 		if (!ReadFile(port.file, (LPVOID)buffer, (DWORD)count, &bytesRead, NULL)) {
 			std::cout << "Error reading data from port\n";
+			ClosePort(port);
 			return false;
 		}
 
@@ -226,6 +227,7 @@ namespace Serial {
 		DWORD bytesWritten;
 		if (!WriteFile(port.file, (LPVOID)buffer, (DWORD)count, &bytesWritten, NULL)) {
 			std::cout << "Error writing data from port\n";
+			ClosePort(port);
 			return false;
 		}
 

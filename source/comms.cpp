@@ -6,6 +6,7 @@
 #include <iostream>
 #include <format>
 
+
 namespace Comms {
 	uint8_t rxpacket[GNCLINK_PACKET_MAX_TOTAL_LENGTH];
 	uint8_t txpacket[GNCLINK_PACKET_MAX_TOTAL_LENGTH];
@@ -23,7 +24,7 @@ namespace Comms {
             //serial_read_start(PORT0, rxframe, GNCLINK_FRAME_TOTAL_LENGTH);
             //// wait until data arrives
             //serial_read_wait_until_complete(PORT0);
-            Serial::Read(port, rxframe, GNCLINK_FRAME_TOTAL_LENGTH);
+            if (!Serial::Read(port, rxframe, GNCLINK_FRAME_TOTAL_LENGTH)) return false;
 
             // check frame
             if (!GNClink_Check_Frame(rxframe)) {
@@ -59,7 +60,7 @@ namespace Comms {
                     // send frame
                     //serial_write_start(PORT0, txframe, GNCLINK_FRAME_TOTAL_LENGTH);
                     //serial_write_wait_until_complete(PORT0);
-                    Serial::Write(port, txframe, GNCLINK_FRAME_TOTAL_LENGTH);
+                    if (!Serial::Write(port, txframe, GNCLINK_FRAME_TOTAL_LENGTH)) return false; // error condition
                 }
                 // packet fully received
                 else break;
@@ -69,6 +70,7 @@ namespace Comms {
 	}
 
 	bool SendPacket(Serial::Port& port, bool resendFrames) {
+        std::cout << "\nNew packet\n";
         int count = 0;
         bool moreFrames = true;
         while (moreFrames) {
@@ -81,6 +83,7 @@ namespace Comms {
                 if (count == payload->resendCount) break;
                 if (count == payload->resendCount - 1) frameFlags |= GNClink_FrameFlags_TransactionEnd;
                 frameIndex = payload->resendIndexes[count];
+                std::cout << std::format("Frame {} resend requested\n", frameIndex);
             }
 
             // send frames
@@ -90,7 +93,16 @@ namespace Comms {
             /*serial_write_start(PORT0, txframe, GNCLINK_FRAME_TOTAL_LENGTH);
             serial_write_wait_until_complete(PORT0);*/
             //if (!resendFrames) txframe[1]++;
-            Serial::Write(port, txframe, GNCLINK_FRAME_TOTAL_LENGTH);
+
+#ifdef COMMS_TEST
+            int random_value = std::rand() % 5; // random number between 0 and 99
+            if (random_value != 0) { // frame will not be sent with 1 in 100 chance
+#endif
+                if (!Serial::Write(port, txframe, GNCLINK_FRAME_TOTAL_LENGTH)) return false;
+#ifdef COMMS_TEST
+            }
+            else std::cout << std::format("Frame {} not sent\n", frameIndex);
+#endif
 
             ++count;
         }
@@ -98,9 +110,9 @@ namespace Comms {
 	}
 
 	bool CommsLoop(Serial::Port& port) {
-        SendPacket(port, false);
-        while (!GetPacket(port)) {
-            SendPacket(port, true);
+        if (!SendPacket(port, false)) return false;
+        while (!GetPacket(port)) { // if frame resend is requested send the packet again
+            if (!SendPacket(port, true)) return false;
         }
 
 		return true;
