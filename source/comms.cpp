@@ -13,21 +13,26 @@ namespace Comms {
 	uint8_t rxframe[GNCLINK_FRAME_TOTAL_LENGTH];
 	uint8_t txframe[GNCLINK_FRAME_TOTAL_LENGTH];
 
-	// returns false if resend is being requested
-	bool GetPacket(Serial::Port& port) {
+	// returns false if frame resend is being requested
+	bool GetPacket(Serial::Port& port, bool& data_received) {
+        data_received = true;
+
         bool receivedFrames[GNCLINK_MAX_FRAMES_PER_PACKET];
         for (int i = 0; i < GNCLINK_MAX_FRAMES_PER_PACKET; ++i) receivedFrames[i] = false;
 
         // construct packet from frames
         while (1) {
-            // receive data
-            //serial_read_start(PORT0, rxframe, GNCLINK_FRAME_TOTAL_LENGTH);
-            //// wait until data arrives
-            //serial_read_wait_until_complete(PORT0);
-            if (!Serial::Read(port, rxframe, GNCLINK_FRAME_TOTAL_LENGTH)) return false;
+            
+            // Check if data is received
+            if (!Serial::Read(port, rxframe, GNCLINK_FRAME_TOTAL_LENGTH)) {
+                // indicate data has not been received
+                data_received = false;
+                return true;
+            }
 
             // check frame
             if (!GNClink_Check_Frame(rxframe)) {
+                std::cout << "WARNING: Frame failed check\n";
                 // continue, frame will be requested again later
                 continue;
             }
@@ -95,8 +100,8 @@ namespace Comms {
             //if (!resendFrames) txframe[1]++;
 
 #ifdef COMMS_TEST
-            int random_value = std::rand() % 5; // random number between 0 and 99
-            if (random_value != 0) { // frame will not be sent with 1 in 100 chance
+            int random_value = std::rand() % 4; // random number between 0 and 9
+            if (random_value != 0) { // frame will not be sent with 1 in 10 chance
 #endif
                 if (!Serial::Write(port, txframe, GNCLINK_FRAME_TOTAL_LENGTH)) return false;
 #ifdef COMMS_TEST
@@ -110,10 +115,25 @@ namespace Comms {
 	}
 
 	bool CommsLoop(Serial::Port& port) {
-        if (!SendPacket(port, false)) return false;
-        while (!GetPacket(port)) { // if frame resend is requested send the packet again
-            if (!SendPacket(port, true)) return false;
-        }
+        bool data_received;
+
+        do {
+            // set previous received packet (and frame) to zero to avoid any propagation
+            memset(rxpacket, 0, sizeof(rxpacket));
+            memset(rxframe, 0, sizeof(rxframe));
+
+            if (!SendPacket(port, false)) return false;
+            while (!GetPacket(port, data_received)) { // if frame resend is requested send the packet again
+                if (!SendPacket(port, true)) return false;
+            }
+
+
+            //if (!GNClink_Check_Packet(rxpacket)) std::cout << "WARNING: Packet failed check\n";
+            
+            // check packet passes. If not redo transaction
+            // If no packet was received, its contents will be zero and the packet will fail.
+        } while (!data_received || !GNClink_Check_Packet(rxpacket));
+
 
 		return true;
 	}
@@ -123,6 +143,8 @@ namespace Comms {
 		GNClink_Construct_Packet(txpacket, GNClink_PacketType_GetGlobalHash, GNClink_PacketFlags_None, 0);
 
 		CommsLoop(port);
+
+        if (!GNClink_Check_Packet(rxpacket)) std::cout << "WARNING: Packet failed check\n";
 
         GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
         GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);
@@ -135,6 +157,8 @@ namespace Comms {
         GNClink_Construct_Packet(txpacket, GNClink_PacketType_GetValueCount, GNClink_PacketFlags_None, 0);
 
         CommsLoop(port);
+
+        if (!GNClink_Check_Packet(rxpacket)) std::cout << "WARNING: Packet failed check\n";
 
         GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
         GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);
@@ -152,6 +176,8 @@ namespace Comms {
         GNClink_Construct_Packet(txpacket, GNClink_PacketType_GetValueName, GNClink_PacketFlags_None, 2);
 
         CommsLoop(port);
+
+        if (!GNClink_Check_Packet(rxpacket)) std::cout << "WARNING: Packet failed check\n";
 
         GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
         GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);

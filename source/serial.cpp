@@ -183,7 +183,7 @@ namespace Serial {
 		COMMTIMEOUTS commTimeouts = {
 			.ReadIntervalTimeout = 100,
 			.ReadTotalTimeoutMultiplier = 0,
-			.ReadTotalTimeoutConstant = 0,
+			.ReadTotalTimeoutConstant = 300,
 			.WriteTotalTimeoutMultiplier = 0,
 			.WriteTotalTimeoutConstant = 300
 		};
@@ -211,6 +211,7 @@ namespace Serial {
 		return false;
 	}
 
+	// Returns false if no data is read OR an error occurs
 	bool Read(Port& port, uint8_t* buffer, int count) {
 		DWORD bytesRead;
 		if (!ReadFile(port.file, (LPVOID)buffer, (DWORD)count, &bytesRead, NULL)) {
@@ -220,9 +221,10 @@ namespace Serial {
 		}
 
 		//std::cout << std::format("Read {}/{} bytes.\n", bytesRead, count);
-		return true;
+		return bytesRead != 0; // false if zero, true otherwise
 	}
 
+	// Returns false if an error occurs writing data
 	bool Write(Port& port, uint8_t* buffer, int count) {
 		DWORD bytesWritten;
 		if (!WriteFile(port.file, (LPVOID)buffer, (DWORD)count, &bytesWritten, NULL)) {

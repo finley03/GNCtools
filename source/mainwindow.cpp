@@ -146,10 +146,11 @@ namespace MainWindow {
 			ImGuiTableFlags_BordersV;
 
 
-		if (ImGui::BeginTable("Globals Table 1", 3, tableflags)) {
+		if (ImGui::BeginTable("Globals Table 1", 4, tableflags)) {
 			ImGui::TableSetupColumn("Global Variable Name");
 			ImGui::TableSetupColumn("Type");
 			ImGui::TableSetupColumn("Value");
+			ImGui::TableSetupColumn("ID");
 			ImGui::TableHeadersRow();
 
 			for (auto it = globals->variables.begin(); it != globals->variables.end(); ++it) {
@@ -165,7 +166,9 @@ namespace MainWindow {
 				ImGui::TableSetColumnIndex(2);
 				getVariableValueText(variable, buffer, sizeof(buffer));
 				ImGui::Text(buffer);
-
+				ImGui::TableSetColumnIndex(3);
+				snprintf(buffer, sizeof(buffer), "%d", it->first);
+				ImGui::Text(buffer);
 			}
 
 			ImGui::EndTable();
