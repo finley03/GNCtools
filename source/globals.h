@@ -3,6 +3,7 @@
 #include <string>
 #include <map>
 #include <fixedpoint.h>
+#include <mutex>
 
 #include "serial.h"
 
@@ -57,6 +58,7 @@ namespace Globals {
 		Serial::Port* port;
 
 		void setVarFromPointer(GlobalVariable& var, void* pointer);
+		void setPointerFromVar(GlobalVariable& var, void* pointer);
 
 		size_t getVariableSize(const GlobalVariable& var);
 
@@ -64,8 +66,11 @@ namespace Globals {
 		Globals(Serial::Port& port);
 
 		std::map<uint16_t, GlobalVariable> variables;
+		std::mutex mutex;
 
 		void pollAll();
+		void pollList(std::vector<uint16_t> list);
+		void setList(std::vector<uint16_t> list);
 	};
 
 }

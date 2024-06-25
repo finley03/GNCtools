@@ -27,6 +27,7 @@ namespace Comms {
             if (!Serial::Read(port, rxframe, GNCLINK_FRAME_TOTAL_LENGTH)) {
                 // indicate data has not been received
                 data_received = false;
+                std::cout << "Connection timed out\n";
                 return true;
             }
 
@@ -45,6 +46,8 @@ namespace Comms {
             // indicate frame has been received
             receivedFrames[GNClink_Get_Frame_Index(rxframe)] = true;
 
+            //std::cout << "Frame received\n";
+
             // extract contents and place in packet
             bool moreFrames = true;
             GNClink_Reconstruct_Packet_From_Frames(rxframe, rxpacket, &moreFrames);
@@ -54,7 +57,10 @@ namespace Comms {
                 GNClink_FramePayload_RequestResend* payload = (GNClink_FramePayload_RequestResend*)GNClink_Get_Frame_Payload_Pointer(txframe);
                 int resendCount = 0;
                 for (int i = 0; i < GNClink_Get_Frame_Index(rxframe); ++i) {
-                    if (!receivedFrames[i]) payload->resendIndexes[resendCount++] = (uint8_t)i;
+                    if (!receivedFrames[i]) {
+                        payload->resendIndexes[resendCount++] = (uint8_t)i;
+                        std::cout << std::format("Frame {} resend requested by host\n", i);
+                    }
                 }
                 // if resend is required
                 if (resendCount) {
@@ -65,7 +71,15 @@ namespace Comms {
                     // send frame
                     //serial_write_start(PORT0, txframe, GNCLINK_FRAME_TOTAL_LENGTH);
                     //serial_write_wait_until_complete(PORT0);
+#ifdef COMMS_TEST
+                    int random_value = std::rand() % 10; // random number between 0 and 9
+                    if (random_value != 0) { // frame will not be sent with 1 in 10 chance
+#endif
                     if (!Serial::Write(port, txframe, GNCLINK_FRAME_TOTAL_LENGTH)) return false; // error condition
+#ifdef COMMS_TEST
+                    }
+                    else std::cout << "Frame resend request not sent by host\n";
+#endif
                 }
                 // packet fully received
                 else break;
@@ -75,7 +89,7 @@ namespace Comms {
 	}
 
 	bool SendPacket(Serial::Port& port, bool resendFrames) {
-        std::cout << "\nNew packet\n";
+        //std::cout << "\nNew packet\n";
         int count = 0;
         bool moreFrames = true;
         while (moreFrames) {
@@ -88,7 +102,7 @@ namespace Comms {
                 if (count == payload->resendCount) break;
                 if (count == payload->resendCount - 1) frameFlags |= GNClink_FrameFlags_TransactionEnd;
                 frameIndex = payload->resendIndexes[count];
-                std::cout << std::format("Frame {} resend requested\n", frameIndex);
+                std::cout << std::format("Frame {} resend requested by device\n", frameIndex);
             }
 
             // send frames
@@ -100,13 +114,13 @@ namespace Comms {
             //if (!resendFrames) txframe[1]++;
 
 #ifdef COMMS_TEST
-            int random_value = std::rand() % 4; // random number between 0 and 9
+            int random_value = std::rand() % 10; // random number between 0 and 9
             if (random_value != 0) { // frame will not be sent with 1 in 10 chance
 #endif
                 if (!Serial::Write(port, txframe, GNCLINK_FRAME_TOTAL_LENGTH)) return false;
 #ifdef COMMS_TEST
             }
-            else std::cout << std::format("Frame {} not sent\n", frameIndex);
+            else std::cout << std::format("Frame {} not sent by host\n", frameIndex);
 #endif
 
             ++count;
@@ -116,6 +130,7 @@ namespace Comms {
 
 	bool CommsLoop(Serial::Port& port) {
         bool data_received;
+        bool packet_lost;
 
         do {
             // set previous received packet (and frame) to zero to avoid any propagation
@@ -127,12 +142,14 @@ namespace Comms {
                 if (!SendPacket(port, true)) return false;
             }
 
-
-            //if (!GNClink_Check_Packet(rxpacket)) std::cout << "WARNING: Packet failed check\n";
             
             // check packet passes. If not redo transaction
             // If no packet was received, its contents will be zero and the packet will fail.
-        } while (!data_received || !GNClink_Check_Packet(rxpacket));
+            packet_lost = !data_received || !GNClink_Check_Packet(rxpacket);
+            if (packet_lost) {
+                std::cout << "Packet lost\n";
+            }
+        } while (packet_lost);
 
 
 		return true;

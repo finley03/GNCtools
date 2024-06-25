@@ -110,34 +110,31 @@ int main(std::vector<std::wstring_view> commandLineArguments) {
 		}
 
 		Serial::Port port = ports[0];
+		//Serial::Port port;
+		//port.name = L"COM12";
 		Serial::OpenPort(port);
 		std::wcout << std::format(L"Connected to {}.\n", port.name);
 
-		//uint32_t crc = Comms::GetGlobalHash(port);
-		////crc = Comms::GetGlobalHash(port);
-		////crc = Comms::GetGlobalHash(port);
-		//uint16_t valueCount = Comms::GetValueCount(port);
-
-		//uint8_t type;
-		//std::cout << std::format("0x{:08x}\n", crc);
-		//std::cout << std::format("{} addressible values\n", valueCount);
-		//std::cout << Comms::GetValueName(1, type, port) << "\n";
-
-		//Comms::test(port);
-
-		//std::this_thread::sleep_for(std::chrono::seconds(5));
+		uint32_t crc = Comms::GetGlobalHash(port);
+		std::cout << std::format("Global Hash: 0x{:08X}\n", crc);
 
 		Globals::Globals globals(port);
 		globals_ptr = &globals;
 
 		std::wcout << std::format(L"Discovered {} variables.\n", globals.variables.size());
 
-		while (port.open) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		std::vector<uint16_t> pollList = { 3, 4, 5, 2, 1, 6 };
 
+		while (port.open) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+			globals.mutex.lock();
 			globals.pollAll();
+			globals.mutex.unlock();
+			//globals.pollList(pollList);
 
 			mainWindow->checkRender();
+			mainWindow->setWantRender();
 		}
 
 		globals_ptr = nullptr;

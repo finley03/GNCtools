@@ -4,7 +4,7 @@
 #include <gnclink.h>
 
 // Test communications by introducing random errors
-#define COMMS_TEST
+//#define COMMS_TEST
 
 namespace Comms {
 	extern uint8_t rxpacket[GNCLINK_PACKET_MAX_TOTAL_LENGTH];

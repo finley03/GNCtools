@@ -197,12 +197,21 @@ namespace MainWindow {
 
 		if (globals_ptr) {
 			ShowGlobals(globals_ptr);
+			ImGui::Spacing();
+			if (ImGui::Button("Set var")) {
+				globals_ptr->mutex.lock();
+				globals_ptr->variables.at(7).value.i32 = 1000;
+				globals_ptr->variables.at(8).value.i32 = 1001;
+				globals_ptr->variables.at(9).value.i32 = 1002;
+				globals_ptr->setList({ 7, 8, 9 });
+				globals_ptr->mutex.unlock();
+			}
 		}
 		else {
 			ImGui::Text("Please connect a device.");
+			ImGui::ShowDemoWindow();
 		}
 
-		//ImGui::ShowDemoWindow();
 
 		ImGui::End();
 	}

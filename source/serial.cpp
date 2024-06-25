@@ -182,9 +182,9 @@ namespace Serial {
 
 		COMMTIMEOUTS commTimeouts = {
 			.ReadIntervalTimeout = 100,
-			.ReadTotalTimeoutMultiplier = 0,
+			.ReadTotalTimeoutMultiplier = (DWORD)10000 / baud,
 			.ReadTotalTimeoutConstant = 300,
-			.WriteTotalTimeoutMultiplier = 0,
+			.WriteTotalTimeoutMultiplier = (DWORD)10000 / baud,
 			.WriteTotalTimeoutConstant = 300
 		};
 
