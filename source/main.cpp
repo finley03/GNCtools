@@ -15,6 +15,7 @@
 #include "globals.h"
 
 Globals::Globals* globals_ptr = nullptr;
+bool quit = false;
 
 
 void printVariable(Globals::GlobalVariable variable) {
@@ -90,10 +91,10 @@ int main(std::vector<std::wstring_view> commandLineArguments) {
 	std::srand(std::time(nullptr)); // random seed
 
 
-	WindowManager::Window* mainWindow = MainWindow::Create(1000, 700, L"GNC2 Ground Station");
+	WindowManager::Window* mainWindow = MainWindow::Create(1400, 1000, L"GNC2 Ground Station");
 	//WindowManager::Window* aboutWindow = AboutWindow::Create(400, 300, L"About GNC2 Ground Station");
 
-	while (1) {
+	while (!quit) {
 		std::cout << "Scanning for compatible port...\n";
 
 		std::vector<std::wstring> busReportedDeviceDescList{ L"GNC2" };
@@ -123,15 +124,15 @@ int main(std::vector<std::wstring_view> commandLineArguments) {
 
 		std::wcout << std::format(L"Discovered {} variables.\n", globals.variables.size());
 
-		std::vector<uint16_t> pollList = { 3, 4, 5, 2, 1, 6 };
+		std::vector<uint16_t> pollList = { 1, 2, 3 };
 
 		while (port.open) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
 			globals.mutex.lock();
-			globals.pollAll();
+			//globals.pollAll();
+			globals.pollList(pollList);
 			globals.mutex.unlock();
-			//globals.pollList(pollList);
 
 			mainWindow->checkRender();
 			mainWindow->setWantRender();

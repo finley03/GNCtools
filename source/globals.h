@@ -60,17 +60,21 @@ namespace Globals {
 		void setVarFromPointer(GlobalVariable& var, void* pointer);
 		void setPointerFromVar(GlobalVariable& var, void* pointer);
 
-		size_t getVariableSize(const GlobalVariable& var);
-
 	public:
 		Globals(Serial::Port& port);
 
 		std::map<uint16_t, GlobalVariable> variables;
 		std::mutex mutex;
 
+		size_t getVariableSize(const GlobalVariable& var);
+
+		void close();
+
 		void pollAll();
 		void pollList(std::vector<uint16_t> list);
 		void setList(std::vector<uint16_t> list);
+		void loadList(std::vector<uint16_t> list);
+		void saveList(std::vector<uint16_t> list);
 	};
 
 }

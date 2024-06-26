@@ -7,6 +7,10 @@
 #include <format>
 
 namespace Globals {
+	void Globals::close() {
+		Serial::ClosePort(*port);
+	}
+
 	size_t Globals::getVariableSize(const GlobalVariable& var) {
 		switch (var.type) {
 		case I64:
@@ -206,6 +210,65 @@ namespace Globals {
 			GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
 			GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);
 			if (packetType != GNClink_PacketType_SetValueList || (packetFlags & GNClink_PacketFlags_Response) == 0) return;
+		}
+	}
+
+	void Globals::loadList(std::vector<uint16_t> list) {
+		uint8_t* rxpayload = GNClink_Get_Packet_Payload_Pointer(Comms::rxpacket);
+		uint8_t* txpayload = GNClink_Get_Packet_Payload_Pointer(Comms::txpacket);
+		uint16_t* idList = (uint16_t*)(txpayload + 1);
+
+		auto it = list.begin();
+		while (it != list.end()) {
+			int TXspaceLeft = GNCLINK_PACKET_MAX_PAYLOAD_LENGTH - 1;
+			int RXspaceLeft = TXspaceLeft;
+
+			int i, payloadSize = 1;
+			for (i = 0; TXspaceLeft >= 2 && it != list.end(); ++i, ++it) {
+				idList[i] = *it;
+				TXspaceLeft -= 2;
+				payloadSize += 2;
+			}
+
+			*txpayload = (uint8_t)i;
+
+			GNClink_Construct_Packet(Comms::txpacket, GNClink_PacketType_LoadValueList, GNClink_PacketFlags_None, payloadSize);
+
+			Comms::CommsLoop(*port);
+
+			GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
+			GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);
+			if (packetType != GNClink_PacketType_LoadValueList || (packetFlags & GNClink_PacketFlags_Response) == 0) return;
+		}
+	}
+
+	void Globals::saveList(std::vector<uint16_t> list) {
+		uint8_t* rxpayload = GNClink_Get_Packet_Payload_Pointer(Comms::rxpacket);
+		uint8_t* txpayload = GNClink_Get_Packet_Payload_Pointer(Comms::txpacket);
+		uint16_t* idList = (uint16_t*)(txpayload + 1);
+
+		auto it = list.begin();
+		while (it != list.end()) {
+			int TXspaceLeft = GNCLINK_PACKET_MAX_PAYLOAD_LENGTH - 1;
+			int RXspaceLeft = TXspaceLeft;
+
+			int i, payloadSize = 1;
+			for (i = 0; TXspaceLeft >= 2 && it != list.end(); ++i, ++it) {
+				idList[i] = *it;
+				TXspaceLeft -= 2;
+				payloadSize += 2;
+				std::cout << std::format("Global variable {} saved to NVM\n", *it);
+			}
+
+			*txpayload = (uint8_t)i;
+
+			GNClink_Construct_Packet(Comms::txpacket, GNClink_PacketType_SaveValueList, GNClink_PacketFlags_None, payloadSize);
+
+			Comms::CommsLoop(*port);
+
+			GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
+			GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);
+			if (packetType != GNClink_PacketType_SaveValueList || (packetFlags & GNClink_PacketFlags_Response) == 0) return;
 		}
 	}
 
