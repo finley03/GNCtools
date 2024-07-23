@@ -327,7 +327,9 @@ namespace MainWindow {
 			}
 
 			if (variableInput(variable)) {
+				Globals::GlobalVariable cachedVar = variable;
 				globals_ptr->mutex.lock();
+				globals->variables[id] = cachedVar; // make sure variable doesn't change when mutex is blocking
 				globals_ptr->setList({ id });
 				globals_ptr->mutex.unlock();
 			}

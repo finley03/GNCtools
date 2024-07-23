@@ -97,7 +97,7 @@ int main(std::vector<std::wstring_view> commandLineArguments) {
 	while (!quit) {
 		std::cout << "Scanning for compatible port...\n";
 
-		std::vector<std::wstring> busReportedDeviceDescList{ L"GNC2" };
+		std::vector<std::wstring> busReportedDeviceDescList{ L"GNC2", L"CP2102 USB to UART Bridge Controller" };
 		std::vector<Serial::Port> ports;
 		while (1) {
 			ports = Serial::GetPortsWithBusReportedDeviceDescInList(busReportedDeviceDescList);
@@ -111,9 +111,9 @@ int main(std::vector<std::wstring_view> commandLineArguments) {
 		}
 
 		Serial::Port port = ports[0];
-		//Serial::Port port;
-		//port.name = L"COM12";
-		Serial::OpenPort(port);
+		/*Serial::Port port;
+		port.name = L"COM5";*/
+		Serial::OpenPort(port, 4800);
 		std::wcout << std::format(L"Connected to {}.\n", port.name);
 
 		uint32_t crc = Comms::GetGlobalHash(port);
@@ -124,14 +124,14 @@ int main(std::vector<std::wstring_view> commandLineArguments) {
 
 		std::wcout << std::format(L"Discovered {} variables.\n", globals.variables.size());
 
-		std::vector<uint16_t> pollList = { 1, 2, 3 };
+		std::vector<uint16_t> pollList = { 16, 17, 18, 19 };
 
 		while (port.open) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(30));
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 			globals.mutex.lock();
-			//globals.pollAll();
-			globals.pollList(pollList);
+			globals.pollAll();
+			//globals.pollList(pollList);
 			globals.mutex.unlock();
 
 			mainWindow->checkRender();
