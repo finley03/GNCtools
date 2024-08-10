@@ -13,6 +13,8 @@ namespace Comms {
 	uint8_t rxframe[GNCLINK_FRAME_TOTAL_LENGTH];
 	uint8_t txframe[GNCLINK_FRAME_TOTAL_LENGTH];
 
+    std::mutex mutex;
+
 	// returns false if frame resend is being requested
 	bool GetPacket(Serial::Port& port, bool& data_received) {
         data_received = true;
@@ -205,4 +207,85 @@ namespace Comms {
         return std::string((char*)(rxpayload + 1));
     }
 
+    uint16_t GetProcessCount(Serial::Port& port) {
+        GNClink_Construct_Packet(txpacket, GNClink_PacketType_GetProcessCount, GNClink_PacketFlags_None, 0);
+
+        CommsLoop(port);
+
+        if (!GNClink_Check_Packet(rxpacket)) std::cout << "WARNING: Packet failed check\n";
+
+        GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
+        GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);
+        if (packetType != GNClink_PacketType_GetProcessCount || (packetFlags & GNClink_PacketFlags_Response) == 0) return 0;
+
+        return *(uint16_t*)GNClink_Get_Packet_Payload_Pointer(rxpacket);
+    }
+
+    std::string GetProcessName(uint32_t id, Serial::Port& port) {
+        uint8_t* rxpayload = GNClink_Get_Packet_Payload_Pointer(rxpacket);
+        uint32_t* txpayload = (uint32_t*)GNClink_Get_Packet_Payload_Pointer(txpacket);
+
+        *txpayload = id;
+
+        GNClink_Construct_Packet(txpacket, GNClink_PacketType_GetProcessName, GNClink_PacketFlags_None, 4);
+
+        CommsLoop(port);
+
+        if (!GNClink_Check_Packet(rxpacket)) std::cout << "WARNING: Packet failed check\n";
+
+        GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
+        GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);
+        if (packetType != GNClink_PacketType_GetProcessName || (packetFlags & GNClink_PacketFlags_Response) == 0) return {};
+
+        return std::string((char*)(rxpayload));
+    }
+
+    // Returns false if no more processes to enumerate
+    bool EnumerateProcesses(uint32_t& id, bool firstProcess, Serial::Port& port) {
+        uint32_t* rxpayload = (uint32_t*)GNClink_Get_Packet_Payload_Pointer(rxpacket);
+        uint32_t* txpayload = (uint32_t*)GNClink_Get_Packet_Payload_Pointer(txpacket);
+
+        if (firstProcess) {
+            GNClink_Construct_Packet(txpacket, GNClink_PacketType_EnumerateProcesses, GNClink_PacketFlags_None, 0);
+        }
+        else {
+            *txpayload = id;
+            GNClink_Construct_Packet(txpacket, GNClink_PacketType_EnumerateProcesses, GNClink_PacketFlags_None, 4);
+        }
+
+        CommsLoop(port);
+
+        if (!GNClink_Check_Packet(rxpacket)) std::cout << "WARNING: Packet failed check\n";
+
+        GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
+        GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);
+        if (packetType != GNClink_PacketType_EnumerateProcesses || (packetFlags & GNClink_PacketFlags_Response) == 0) return true;
+
+        int payloadLength = GNClink_Get_Packet_Payload_Size(rxpacket);
+        if (payloadLength == 0) return false;
+        else if (payloadLength == 4) {
+            id = *rxpayload;
+            return true;
+        }
+        else return true;
+    }
+
+    GNClink_PacketPayload_GetProcessDiagnostics_Response GetProcessDiagnostics(uint32_t id, Serial::Port& port) {
+        GNClink_PacketPayload_GetProcessDiagnostics_Response* rxpayload =
+            (GNClink_PacketPayload_GetProcessDiagnostics_Response*)GNClink_Get_Packet_Payload_Pointer(rxpacket);
+        uint32_t* txpayload = (uint32_t*)GNClink_Get_Packet_Payload_Pointer(txpacket);
+
+        *txpayload = id;
+        GNClink_Construct_Packet(txpacket, GNClink_PacketType_GetProcessDiagnostics, GNClink_PacketFlags_None, 4);
+
+        CommsLoop(port);
+
+        if (!GNClink_Check_Packet(rxpacket)) std::cout << "WARNING: Packet failed check\n";
+
+        GNClink_PacketType packetType = GNClink_Get_Packet_Type(Comms::rxpacket);
+        GNClink_PacketFlags packetFlags = GNClink_Get_Packet_Flags(Comms::rxpacket);
+        if (packetType != GNClink_PacketType_GetProcessDiagnostics || (packetFlags & GNClink_PacketFlags_Response) == 0) return {};
+
+        return *rxpayload;
+    }
 }

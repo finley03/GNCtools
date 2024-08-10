@@ -3,7 +3,7 @@
 #include <string>
 #include <map>
 #include <fixedpoint.h>
-#include <mutex>
+//#include <mutex>
 
 #include "serial.h"
 
@@ -64,7 +64,9 @@ namespace Globals {
 		Globals(Serial::Port& port);
 
 		std::map<uint16_t, GlobalVariable> variables;
-		std::mutex mutex;
+		//std::mutex mutex;
+
+		uint16_t getIdFromName(std::string name); // 0 is an INVALID ID, indicates variable does not exist
 
 		size_t getVariableSize(const GlobalVariable& var);
 

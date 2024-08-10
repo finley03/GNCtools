@@ -296,4 +296,14 @@ namespace Globals {
 
 	}
 
+
+	uint16_t Globals::getIdFromName(std::string name) {
+		std::map<uint16_t, GlobalVariable>::iterator iterator = std::find_if(variables.begin(), variables.end(),
+			[&](const std::pair<uint16_t, GlobalVariable>& var) { return var.second.name == name; });
+
+		if (iterator == variables.end()) return 0;
+
+		return (*iterator).first;
+	}
+
 }

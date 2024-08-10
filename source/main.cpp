@@ -13,8 +13,10 @@
 #include"aboutwindow.h"
 
 #include "globals.h"
+#include "diagnostics.h"
 
 Globals::Globals* globals_ptr = nullptr;
+Diagnostics* diagnostics_ptr = nullptr;
 bool quit = false;
 
 
@@ -124,15 +126,44 @@ int main(std::vector<std::wstring_view> commandLineArguments) {
 
 		std::wcout << std::format(L"Discovered {} variables.\n", globals.variables.size());
 
+		//uint16_t process_count = Comms::GetProcessCount(port);
+		//std::cout << std::format("There are {} running processes.\n", process_count);
+		////std::string proc0name = Comms::GetProcessName(0, port);
+		////std::cout << proc0name << " Process\n";
+
+		//std::vector<uint32_t> processes;
+		//uint32_t id = UINT32_MAX;
+		//Comms::EnumerateProcesses(id, true, port);
+		//processes.push_back(id);
+		//while (Comms::EnumerateProcesses(id, false, port)) {
+		//	processes.push_back(id);
+		//}
+
+		//for (const uint32_t& id : processes) {
+		//	std::cout << std::format("Process {}: {}\n", id, Comms::GetProcessName(id, port));
+		//	GNClink_PacketPayload_GetProcessDiagnostics_Response diagnostics = Comms::GetProcessDiagnostics(id, port);
+		//	std::cout << std::format("Call count: {}\nCPU time: {}\n", diagnostics.call_count, diagnostics.CPU_time);
+		//}
+
+		Diagnostics diagnostics(port);
+		diagnostics_ptr = &diagnostics;
+
+		//diagnostics.enumerateProcesses();
+		//diagnostics.getProcessDiagnostics();
+
+		//for (Process_Diagnostics& proc : diagnostics.processes) {
+		//	std::cout << std::format("[{}] {} Process: {}us CPU, {} calls.\n", proc.id, proc.name, proc.CPU_time, proc.call_count);
+		//}
+
 		std::vector<uint16_t> pollList = { 16, 17, 18, 19 };
 
 		while (port.open) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-			globals.mutex.lock();
+			Comms::mutex.lock();
 			globals.pollAll();
 			//globals.pollList(pollList);
-			globals.mutex.unlock();
+			Comms::mutex.unlock();
 
 			mainWindow->checkRender();
 			mainWindow->setWantRender();

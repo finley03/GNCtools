@@ -15,10 +15,13 @@
 #include <backends/imgui_impl_opengl3.h>
 
 #include "globals.h"
+#include "comms.h"
+#include "diagnostics.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 extern Globals::Globals* globals_ptr;
+extern Diagnostics* diagnostics_ptr;
 extern bool quit;
 
 namespace MainWindow {
@@ -194,6 +197,8 @@ namespace MainWindow {
 	}
 
 	void ShowGlobals(Globals::Globals* globals) {
+		if (!ImGui::BeginTabItem("Global Variables")) return;
+
 		if (!globals) {
 			ImGui::Text("Error: Global data structure not present.");
 			return;
@@ -204,8 +209,8 @@ namespace MainWindow {
 
 		const ImGuiTableFlags tableflags =
 			ImGuiTableFlags_RowBg |
-			ImGuiTableFlags_BordersOuter |
-			ImGuiTableFlags_BordersV |
+			//ImGuiTableFlags_BordersOuter |
+			//ImGuiTableFlags_BordersInnerV |
 			ImGuiTableFlags_ScrollY;
 
 		ImGui::BeginChild("Globals Table Child", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0));
@@ -271,17 +276,17 @@ namespace MainWindow {
 
 		if (selected_count) {
 			if (ImGui::Button("Poll all values")) {
-				globals_ptr->mutex.lock();
+				Comms::mutex.lock();
 				globals_ptr->pollList(selected_IDs);
-				globals_ptr->mutex.unlock();
+				Comms::mutex.unlock();
 			}
 
 			ImGui::SameLine();
 			if (ImGui::Button("Load default values for all")) {
-				globals_ptr->mutex.lock();
+				Comms::mutex.lock();
 				globals_ptr->loadList(selected_IDs);
 				globals_ptr->pollList(selected_IDs);
-				globals_ptr->mutex.unlock();
+				Comms::mutex.unlock();
 			}
 		}
 
@@ -301,86 +306,136 @@ namespace MainWindow {
 
 			snprintf(buffer, sizeof(buffer), "Poll current value##%s", variable.name.c_str());
 			if (ImGui::Button(buffer)) {
-				globals_ptr->mutex.lock();
+				Comms::mutex.lock();
 				globals_ptr->pollList({ id });
-				globals_ptr->mutex.unlock();
+				Comms::mutex.unlock();
 			}
 
 			ImGui::SameLine();
 
 			snprintf(buffer, sizeof(buffer), "Load default value from storage##%s", variable.name.c_str());
 			if (ImGui::Button(buffer)) {
-				globals_ptr->mutex.lock();
+				Comms::mutex.lock();
 				globals_ptr->loadList({ id });
 				globals_ptr->pollList({ id }); // Update values shown to the user
-				globals_ptr->mutex.unlock();
+				Comms::mutex.unlock();
 			}
 
 			ImGui::SameLine();
 
-			snprintf(buffer, sizeof(buffer), "Save default value to storage##%s", variable.name.c_str());
+			snprintf(buffer, sizeof(buffer), "Save value to storage as default##%s", variable.name.c_str());
 			if (ImGui::Button(buffer)) {
-				globals_ptr->mutex.lock();
+				Comms::mutex.lock();
 				globals_ptr->setList({ id }); // ensure value saved is the one seen by the user, in case it has changed
 				globals_ptr->saveList({ id });
-				globals_ptr->mutex.unlock();
+				Comms::mutex.unlock();
 			}
 
 			if (variableInput(variable)) {
 				Globals::GlobalVariable cachedVar = variable;
-				globals_ptr->mutex.lock();
+				Comms::mutex.lock();
 				globals->variables[id] = cachedVar; // make sure variable doesn't change when mutex is blocking
 				globals_ptr->setList({ id });
-				globals_ptr->mutex.unlock();
+				Comms::mutex.unlock();
 			}
 		}
 
-		//if (ImGui::Button("Set var")) {
-		//	globals_ptr->mutex.lock();
-		//	globals_ptr->variables.at(7).value.i32 = 1000;
-		//	globals_ptr->variables.at(8).value.i32 = 1001;
-		//	globals_ptr->variables.at(9).value.i32 = 1002;
-		//	globals_ptr->setList({ 7, 8, 9 });
-		//	globals_ptr->mutex.unlock();
-		//}
-		//if (ImGui::Button("Load var")) {
-		//	globals_ptr->mutex.lock();
-		//	globals_ptr->loadList({ 7, 8, 9 });
-		//	globals_ptr->mutex.unlock();
-		//}
-
 		ImGui::EndChild();
 
+		ImGui::EndTabItem();
+	}
 
-		//if (ImGui::BeginTable("Globals Table 1", 4, tableflags)) {
-		//	ImGui::TableSetupColumn("Global Variable Name");
-		//	ImGui::TableSetupColumn("Type");
-		//	ImGui::TableSetupColumn("Value");
-		//	ImGui::TableSetupColumn("ID");
-		//	ImGui::TableHeadersRow();
+	void ShowDiagnostics(Globals::Globals* globals, Diagnostics* diagnostics) {
+		if (!ImGui::BeginTabItem("Process Diagnostics")) return;
 
-		//	for (auto it = globals->variables.begin(); it != globals->variables.end(); ++it) {
-		//		char buffer[32];
+		if (!globals || !diagnostics) {
+			ImGui::Text("Error: Global data structure or Diagnostics data structure not present.");
+			return;
+		}
 
-		//		Globals::GlobalVariable& variable = it->second;
-		//		ImGui::TableNextRow();
-		//		ImGui::TableSetColumnIndex(0);
-		//		ImGui::Text(variable.name.c_str());
-		//		ImGui::TableSetColumnIndex(1);
-		//		getVariableTypeText(variable, buffer, sizeof(buffer));
-		//		ImGui::Text(buffer);
-		//		ImGui::TableSetColumnIndex(2);
-		//		getVariableValueText(variable, buffer, sizeof(buffer));
-		//		ImGui::Text(buffer);
-		//		ImGui::TableSetColumnIndex(3);
-		//		snprintf(buffer, sizeof(buffer), "%d", it->first);
-		//		ImGui::Text(buffer);
-		//	}
+		static uint16_t totalCpuID = 0, processCpuID = 0, OSOverheadID = 0;
 
-		//	
+		static bool once = true;
+		if (once) {
+			once = false;
 
-		//	ImGui::EndTable();
-		//}
+			totalCpuID = globals->getIdFromName("Total CPU Utilization");
+			processCpuID = globals->getIdFromName("Process CPU Utilization");
+			OSOverheadID = globals->getIdFromName("OS CPU Overhead");
+		}
+
+		bool requiredVariables = false;
+		if (totalCpuID && processCpuID && OSOverheadID) requiredVariables = true;
+
+		if (requiredVariables) {
+			ImGui::SeparatorText("Overall CPU Usage");
+
+			ImGui::TextUnformatted("Total CPU Utilization");
+
+			char buffer[64];
+			snprintf(buffer, sizeof(buffer), "%.02f%% (%.02f%% Processes, %.02f%% OS Overhead)", (float)globals->variables[totalCpuID].value.i16 / 100,
+				(float)globals->variables[processCpuID].value.i16 / 100, (float)globals->variables[OSOverheadID].value.i16 / 100);
+			ImGui::ProgressBar((float)globals->variables[totalCpuID].value.i16 / 10000, ImVec2(-FLT_MIN, 0.0f), buffer);
+		}
+
+		ImGui::Spacing();
+
+		ImGui::SeparatorText("Processes");
+
+		if (ImGui::Button("Refresh##Diagnostics")) {
+			Comms::mutex.lock();
+			for (int i = 0; !diagnostics->getProcessDiagnostics() && i < 3; ++i) { // max three tries
+				std::cout << "Enumerating processes...\n";
+				diagnostics->enumerateProcesses();
+			}
+			Comms::mutex.unlock();
+		}
+
+		ImGui::Spacing();
+
+		const ImGuiTableFlags tableflags =
+			ImGuiTableFlags_RowBg;
+			//ImGuiTableFlags_BordersOuter |
+			//ImGuiTableFlags_BordersInnerV;
+			//ImGuiTableFlags_ScrollY;
+			//ImGuiTableFlags_NoHostExtendY;
+
+		if (ImGui::BeginTable("Process Table", 6, tableflags)) {
+			ImGui::TableSetupColumn("Process ID");
+			ImGui::TableSetupColumn("Process Name");
+			ImGui::TableSetupColumn("CPU Time (us)");
+			ImGui::TableSetupColumn("Call Count");
+			ImGui::TableSetupColumn("Stack Ram Usage");
+			ImGui::TableSetupColumn("Peak Stack Ram Usage");
+			ImGui::TableHeadersRow();
+
+			char buffer[32];
+
+			for (Process_Diagnostics& proc : diagnostics->processes) {
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text("%d", proc.id);
+				ImGui::TableNextColumn();
+				ImGui::TextUnformatted(proc.name.c_str());
+				ImGui::TableNextColumn();
+				snprintf(buffer, sizeof(buffer), "%d (%.02f%%)", proc.CPU_time, (float)proc.CPU_time / 1E4);
+				//ImGui::Text("%d", proc.CPU_time);
+				ImGui::TextUnformatted(buffer);
+				ImGui::TableNextColumn();
+				ImGui::Text("%d", proc.call_count);
+				ImGui::TableNextColumn();
+				snprintf(buffer, sizeof(buffer), "%d/%d (%.01f%%)", proc.stack_use, proc.available_stack, (float)proc.stack_use * 100 / proc.available_stack);
+				ImGui::TextUnformatted(buffer);
+				ImGui::TableNextColumn();
+				snprintf(buffer, sizeof(buffer), "%d/%d (%.01f%%)", proc.max_stack, proc.available_stack, (float)proc.max_stack * 100 / proc.available_stack);
+				ImGui::TextUnformatted(buffer);
+			}
+
+			ImGui::EndTable();
+		}
+
+
+		ImGui::EndTabItem();
 	}
 
 	void UserInterface(WindowManager::Window& window) {
@@ -404,7 +459,12 @@ namespace MainWindow {
 		//ImGui::SetWindowFontScale((float)(window.getDpi()) / 96);
 
 		if (globals_ptr) {
-			ShowGlobals(globals_ptr);
+			if (ImGui::BeginTabBar("MainWindowTabs")) {
+				ShowGlobals(globals_ptr);
+				ShowDiagnostics(globals_ptr, diagnostics_ptr);
+
+				ImGui::EndTabBar();
+			}
 		}
 		else {
 			ImGui::Text("Please connect a device.");
